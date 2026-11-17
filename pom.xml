@@ -11,7 +11,7 @@
     <relativePath/>
   </parent>
 
-  <groupId>com.sanhuan</groupId>
+  <groupId>com.emall</groupId>
   <artifactId>emall-platform</artifactId>
   <version>0.1.0</version>
   <name>emall-platform</name>

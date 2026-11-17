@@ -1,0 +1,32 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: emall
+  config:
+    import: optional:classpath:application-local.yml
+  datasource:
+    url: jdbc:mysql://8.130.74.232:3306/emall?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false
+    username: root
+    password: ${EMALL_DB_PASSWORD:}
+    hikari:
+      connection-timeout: 5000
+      maximum-pool-size: 5
+  data:
+    redis:
+      host: 8.130.74.232
+      port: 6379
+      password: ${EMALL_REDIS_PASSWORD:}
+      timeout: 2s
+      connect-timeout: 2s
+  sql:
+    init:
+      mode: never
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 6MB
+
+emall:
+  jwt-secret: ${EMALL_JWT_SECRET:}

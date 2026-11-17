@@ -1,0 +1,10 @@
+# 复制本文件为 application-local.yml，放在同一目录。不要提交那个文件。
+spring:
+  datasource:
+    password: ""
+  data:
+    redis:
+      password: ""
+
+emall:
+  jwt-secret: "至少32位的本地密钥"

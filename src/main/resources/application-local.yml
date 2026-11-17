@@ -1,0 +1,9 @@
+spring:
+  datasource:
+    password: "zhaobin@zhangbotao"
+  data:
+    redis:
+      password: "123456"
+
+emall:
+  jwt-secret: "sanhuan-emall-phase0-jwt-secret-key"

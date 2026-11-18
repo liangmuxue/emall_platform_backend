@@ -7,3 +7,4 @@ spring:
 
 emall:
   jwt-secret: "sanhuan-emall-phase0-jwt-secret-key"
+  deepseek-api-key: "sk-9deb53b146f54adb9922d0afd5499cec"

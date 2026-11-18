@@ -17,17 +17,20 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final TokenStore tokenStore;
+    private final AccessService access;
 
     public AuthService(
             JdbcTemplate jdbc,
             PasswordEncoder passwordEncoder,
             JwtService jwtService,
-            TokenStore tokenStore
+            TokenStore tokenStore,
+            AccessService access
     ) {
         this.jdbc = jdbc;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
         this.tokenStore = tokenStore;
+        this.access = access;
     }
 
     public Map<String, String> login(ClientKind client, String username, String password, String mobile) {
@@ -55,17 +58,20 @@ public class AuthService {
     }
 
     public Map<String, Object> userInfo(Session session, String token) {
-        String home = session.client() == ClientKind.C
-                || session.client() == ClientKind.MER
-                || session.client() == ClientKind.PICKUP
-                ? ""
-                : "/dashboard/analytics";
+        boolean platform = session.client() == ClientKind.PLATFORM;
+        boolean merchant = session.client() == ClientKind.MERCHANT || session.client() == ClientKind.MER;
+        List<String> roles = platform || merchant
+                ? access.codes(session)
+                : List.of(session.client().path());
+        String home = platform
+                ? AccessCatalog.home(true, roles)
+                : merchant ? AccessCatalog.home(false, roles) : "";
         return Map.of(
                 "userId", Long.toString(session.accountId()),
                 "username", session.username(),
                 "realName", session.realName(),
                 "avatar", session.avatar(),
-                "roles", List.of(session.client().path()),
+                "roles", roles,
                 "desc", session.client().path(),
                 "homePath", home,
                 "token", token

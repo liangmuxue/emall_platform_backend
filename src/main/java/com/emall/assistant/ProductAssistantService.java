@@ -48,7 +48,6 @@ public class ProductAssistantService {
               "product": {
                 "productName": "不超过60字",
                 "categoryId": 0,
-                "spuNo": "货号",
                 "fakeSold": 0,
                 "specImages": true,
                 "specs": [
@@ -69,7 +68,7 @@ public class ProductAssistantService {
               "detailImageIndexes": [2]
             }
             规则：
-            - 附件里的文字要尽量填进商品名称、类目、货号、已售、规格、价格、库存、介绍和服务承诺。
+            - 附件里的文字要尽量填进商品名称、类目、已售、规格、价格、库存、介绍和服务承诺。不要填写货号，货号由系统生成且不能修改。
             - categoryId 只能从当前表单里的类目列表选择，对不上就省略。
             - specs 一旦给出，就是完整规格列表，会替换现有规格。最多两级。有下级的行是分组，不要填单位、价格和库存。没有下级的行必须有单位、大于 0 的售价和非负库存。
             - 单位只能是：份、斤、盒、袋、瓶、箱、只、组。按重量卖用斤，按件卖用份。
@@ -197,12 +196,6 @@ public class ProductAssistantService {
         Long categoryId = categoryId(product, draft);
         if (categoryId != null) {
             clean.put("categoryId", categoryId);
-        }
-        if (product.hasNonNull("spuNo")) {
-            String spuNo = product.path("spuNo").asText("").trim();
-            if (!spuNo.isEmpty() && spuNo.length() <= 32) {
-                clean.put("spuNo", spuNo);
-            }
         }
         Integer fakeSold = integer(product.get("fakeSold"));
         if (fakeSold != null && fakeSold >= 0) {

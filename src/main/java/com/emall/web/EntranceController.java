@@ -7,6 +7,7 @@ import java.util.Map;
 import com.emall.api.ApiException;
 import com.emall.api.ApiResponse;
 import com.emall.api.ClientKind;
+import com.emall.auth.AccessService;
 import com.emall.auth.AuthService;
 import com.emall.auth.Session;
 import com.emall.auth.TokenStore;
@@ -24,11 +25,13 @@ import org.springframework.web.bind.annotation.RestController;
 public class EntranceController {
 
     private final AuthService authService;
+    private final AccessService access;
     private final TokenStore tokenStore;
     private final JdbcTemplate jdbc;
 
-    public EntranceController(AuthService authService, TokenStore tokenStore, JdbcTemplate jdbc) {
+    public EntranceController(AuthService authService, AccessService access, TokenStore tokenStore, JdbcTemplate jdbc) {
         this.authService = authService;
+        this.access = access;
         this.tokenStore = tokenStore;
         this.jdbc = jdbc;
     }
@@ -61,9 +64,9 @@ public class EntranceController {
     }
 
     @GetMapping("/auth/codes")
-    public ApiResponse<List<String>> codes(@PathVariable String client) {
+    public ApiResponse<List<String>> codes(@PathVariable String client, HttpServletRequest request) {
         require(client);
-        return ApiResponse.ok(List.of("*"));
+        return ApiResponse.ok(access.codes(session(request)));
     }
 
     @GetMapping("/user/info")

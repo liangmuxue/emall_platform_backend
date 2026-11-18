@@ -2,6 +2,7 @@ package com.emall.catalog;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
@@ -15,6 +16,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.emall.api.ApiException;
 import com.emall.auth.Session;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.stereotype.Service;
@@ -22,6 +24,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class CatalogService {
+
+    private static final SecureRandom SPU_RANDOM = new SecureRandom();
 
     private final JdbcTemplate jdbc;
     private final ObjectMapper json;
@@ -319,11 +323,6 @@ public class CatalogService {
             throw new ApiException(400, "请选择所属类目");
         }
         assertEnabledCategory(draft.categoryId());
-        String spuNo = required(draft.spuNo(), "请填写商品货号");
-        if (spuNo.length() > 40) {
-            throw new ApiException(400, "商品货号过长");
-        }
-        assertUniqueSpuNo(id, spuNo);
         int fakeSold = draft.fakeSold() == null ? 0 : draft.fakeSold();
         if (fakeSold < 0) {
             throw new ApiException(400, "基础已售需为非负整数");
@@ -340,23 +339,7 @@ public class CatalogService {
         String detail = sanitizeHtml(draft.detail());
         String services = serviceJson(sanitizeHtml(draft.services()), draft.specImages() == null || draft.specImages());
         if (id == null) {
-            GeneratedKeyHolder keys = new GeneratedKeyHolder();
-            jdbc.update(connection -> {
-                var statement = connection.prepareStatement("""
-                        INSERT INTO product_spu (shop_id, category_id, spu_no, product_name, detail_html, service_json, sales_status, fake_sold_count, created_by)
-                        VALUES (?, ?, ?, ?, ?, ?, 'DRAFT', ?, ?)
-                        """, new String[]{"id"});
-                statement.setLong(1, shopId);
-                statement.setLong(2, draft.categoryId());
-                statement.setString(3, spuNo);
-                statement.setString(4, name);
-                statement.setString(5, blankToNull(detail));
-                statement.setString(6, services);
-                statement.setInt(7, fakeSold);
-                statement.setLong(8, session.accountId());
-                return statement;
-            }, keys);
-            long created = keys.getKey().longValue();
+            long created = insertProduct(session, shopId, draft.categoryId(), name, detail, services, fakeSold);
             replaceImages(created, images, session.accountId());
             replaceSkus(created, specs);
             return product(created, shopId);
@@ -364,9 +347,9 @@ public class CatalogService {
         salesStatus(id, shopId);
         jdbc.update("""
                 UPDATE product_spu
-                SET category_id = ?, spu_no = ?, product_name = ?, detail_html = ?, service_json = ?, fake_sold_count = ?
+                SET category_id = ?, product_name = ?, detail_html = ?, service_json = ?, fake_sold_count = ?
                 WHERE id = ? AND shop_id = ?
-                """, draft.categoryId(), spuNo, name, blankToNull(detail), services, fakeSold, id, shopId);
+                """, draft.categoryId(), name, blankToNull(detail), services, fakeSold, id, shopId);
         replaceImages(id, images, session.accountId());
         replaceSkus(id, specs);
         return product(id, shopId);
@@ -823,13 +806,40 @@ public class CatalogService {
         }, shopId);
     }
 
-    private void assertUniqueSpuNo(Long id, String spuNo) {
-        Integer count = id == null
-                ? jdbc.queryForObject("SELECT COUNT(*) FROM product_spu WHERE spu_no = ?", Integer.class, spuNo)
-                : jdbc.queryForObject("SELECT COUNT(*) FROM product_spu WHERE spu_no = ? AND id <> ?", Integer.class, spuNo, id);
-        if (count != null && count > 0) {
-            throw new ApiException(400, "商品货号已存在，请更换后再保存");
+    private long insertProduct(
+            Session session,
+            long shopId,
+            long categoryId,
+            String name,
+            String detail,
+            String services,
+            int fakeSold
+    ) {
+        for (int attempt = 0; attempt < 5; attempt++) {
+            String spuNo = "SP" + System.currentTimeMillis() + (100 + SPU_RANDOM.nextInt(900));
+            try {
+                GeneratedKeyHolder keys = new GeneratedKeyHolder();
+                jdbc.update(connection -> {
+                    var statement = connection.prepareStatement("""
+                            INSERT INTO product_spu (shop_id, category_id, spu_no, product_name, detail_html, service_json, sales_status, fake_sold_count, created_by)
+                            VALUES (?, ?, ?, ?, ?, ?, 'DRAFT', ?, ?)
+                            """, new String[]{"id"});
+                    statement.setLong(1, shopId);
+                    statement.setLong(2, categoryId);
+                    statement.setString(3, spuNo);
+                    statement.setString(4, name);
+                    statement.setString(5, blankToNull(detail));
+                    statement.setString(6, services);
+                    statement.setInt(7, fakeSold);
+                    statement.setLong(8, session.accountId());
+                    return statement;
+                }, keys);
+                return keys.getKey().longValue();
+            } catch (DuplicateKeyException ignored) {
+                // spu_no 有唯一索引，同一毫秒撞号时换一个再写
+            }
         }
+        throw new ApiException(500, "商品货号生成失败，请重试");
     }
 
     private List<SkuDraft> normalizeSpecs(List<SkuDraft> raw, boolean keepImages) {

@@ -310,12 +310,14 @@ public class TradeService {
         }
         Map<String, Object> order = found.get(0);
         order.put("items", jdbc.query("""
-                SELECT product_name_snapshot, spec_snapshot_json, image_url_snapshot, quantity, item_amount
+                SELECT id, product_name_snapshot, spec_snapshot_json, image_url_snapshot, quantity, item_amount, refund_qty
                 FROM sales_order_item
                 WHERE order_id = ?
                 ORDER BY id
                 """, (rs, row) -> {
             Map<String, Object> item = new LinkedHashMap<>();
+            item.put("id", rs.getLong("id"));
+            item.put("refundedQty", rs.getInt("refund_qty"));
             item.put("name", rs.getString("product_name_snapshot"));
             item.put("spec", specName(rs.getString("spec_snapshot_json")));
             item.put("imageUrl", rs.getString("image_url_snapshot"));
@@ -1020,6 +1022,7 @@ public class TradeService {
             case "PICKED_UP" -> "已取货，确认收货后按实付获得消费积分";
             case "COMPLETED" -> "订单已完成，消费积分已到账";
             case "CANCELLED" -> "订单已关闭，库存已退回";
+            case "REFUNDED" -> "退款已原路退回";
             default -> "订单服务正在为您持续保障";
         };
     }

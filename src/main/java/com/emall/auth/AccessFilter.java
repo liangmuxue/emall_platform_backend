@@ -28,8 +28,12 @@ public class AccessFilter extends OncePerRequestFilter {
             HttpServletResponse response,
             FilterChain filterChain
     ) throws ServletException, IOException {
-        String menu = AccessCatalog.requiredMenu(client(request.getRequestURI()), request.getRequestURI());
-        if (menu == null) {
+        java.util.List<String> menus = AccessCatalog.requiredMenus(
+                client(request.getRequestURI()),
+                request.getRequestURI(),
+                request.getMethod()
+        );
+        if (menus.isEmpty()) {
             filterChain.doFilter(request, response);
             return;
         }
@@ -39,7 +43,7 @@ public class AccessFilter extends OncePerRequestFilter {
             return;
         }
         try {
-            access.require(session, menu);
+            access.requireAny(session, menus);
             filterChain.doFilter(request, response);
         } catch (ApiException exception) {
             response.setStatus(exception.status());

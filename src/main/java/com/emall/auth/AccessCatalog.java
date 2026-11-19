@@ -13,7 +13,8 @@ public final class AccessCatalog {
     private static final List<Menu> PLATFORM = List.of(
             leaf("overview", "经营概览"),
             group("user", "用户体系", List.of(
-                    leaf("org", "平台组织"),
+                    leaf("org-roles", "岗位权限"),
+                    leaf("org-staff", "平台员工"),
                     leaf("members", "C端会员"),
                     leaf("accounts", "商家账号")
             )),
@@ -67,8 +68,11 @@ public final class AccessCatalog {
     );
 
     private static final List<Prefix> PLATFORM_API = List.of(
-            new Prefix("/org", "org"),
+            new Prefix("/org/menus", "org-roles"),
+            new Prefix("/org/roles", "org-roles"),
+            new Prefix("/org/staff", "org-staff"),
             new Prefix("/merchant-accounts", "accounts"),
+            new Prefix("/pickup-points", "pickups"),
             new Prefix("/categories", "categories"),
             new Prefix("/products", "audits"),
             new Prefix("/activities", "campaigns"),
@@ -100,6 +104,26 @@ public final class AccessCatalog {
         return Set.copyOf(leavesOf(platform ? PLATFORM : MERCHANT));
     }
 
+    public static List<String> requiredMenus(String client, String path, String method) {
+        if ("platform".equals(client) && path != null && path.startsWith("/api/platform/")) {
+            String rest = path.substring("/api/platform".length());
+            if (rest.equals("/org/roles") || rest.startsWith("/org/roles/")) {
+                if ("GET".equalsIgnoreCase(method) || "HEAD".equalsIgnoreCase(method)) {
+                    return List.of("org-roles", "org-staff", "org");
+                }
+                return List.of("org-roles", "org");
+            }
+            if (rest.equals("/org/menus") || rest.startsWith("/org/menus/")) {
+                return List.of("org-roles", "org");
+            }
+            if (rest.equals("/org/staff") || rest.startsWith("/org/staff/")) {
+                return List.of("org-staff", "org");
+            }
+        }
+        String menu = requiredMenu(client, path);
+        return menu == null ? List.of() : List.of(menu);
+    }
+
     public static String requiredMenu(String client, String path) {
         if (path == null) {
             return null;
@@ -118,12 +142,13 @@ public final class AccessCatalog {
 
     public static String home(boolean platform, List<String> menus) {
         List<String> order = platform
-                ? List.of("overview", "org", "accounts", "categories", "audits", "aftersales", "campaigns", "finance")
+                ? List.of("overview", "org-roles", "org-staff", "accounts", "categories", "audits", "aftersales", "campaigns", "finance")
                 : List.of("dashboard", "products", "categories", "orders", "aftersale", "marketing", "settlement", "store", "roles", "staff-users");
         Map<String, String> paths = platform
                 ? Map.of(
                 "overview", "/dashboard/analytics",
-                "org", "/org",
+                "org-roles", "/org/roles",
+                "org-staff", "/org/staff",
                 "accounts", "/merchant-accounts",
                 "categories", "/catalog/categories",
                 "audits", "/catalog/audits",

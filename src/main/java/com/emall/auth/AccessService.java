@@ -31,8 +31,18 @@ public class AccessService {
     }
 
     public void require(Session session, String menu) {
-        if (menu == null || codes(session).contains(menu)) {
+        requireAny(session, menu == null ? List.of() : List.of(menu));
+    }
+
+    public void requireAny(Session session, List<String> menus) {
+        if (menus == null || menus.isEmpty()) {
             return;
+        }
+        List<String> owned = codes(session);
+        for (String menu : menus) {
+            if (owned.contains(menu)) {
+                return;
+            }
         }
         throw new ApiException(403, "无权访问该功能，请联系管理员分配岗位权限");
     }
@@ -65,6 +75,9 @@ public class AccessService {
             for (JsonNode menu : listed) {
                 if ("*".equals(menu.asText())) {
                     all = true;
+                } else if ("org".equals(menu.asText())) {
+                    menus.add("org-roles");
+                    menus.add("org-staff");
                 } else if (!menu.asText().isBlank()) {
                     menus.add(menu.asText());
                 }

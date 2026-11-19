@@ -203,6 +203,14 @@ public class OrgService {
             JsonNode permission = read(rs.getString("permission_json"));
             List<String> menus = new ArrayList<>();
             permission.path("menus").forEach(item -> menus.add(item.asText()));
+            if (menus.remove("org")) {
+                if (!menus.contains("org-roles")) {
+                    menus.add("org-roles");
+                }
+                if (!menus.contains("org-staff")) {
+                    menus.add("org-staff");
+                }
+            }
             Map<String, Object> role = new LinkedHashMap<>();
             role.put("id", rs.getLong("id"));
             role.put("code", rs.getString("role_code"));
@@ -269,7 +277,7 @@ public class OrgService {
 
     private Map<String, Object> saveStaff(boolean platform, long actorId, Long id, StaffRequest request) {
         String name = required(request == null ? null : request.name(), "请填写姓名");
-        String phone = phone(request == null ? null : request.phone(), platform);
+        String phone = phone(request == null ? null : request.phone(), false);
         long roleId = platform
                 ? platformRoleId(request == null ? null : request.roleId())
                 : merchantRoleId(request == null ? null : request.roleId(), null);

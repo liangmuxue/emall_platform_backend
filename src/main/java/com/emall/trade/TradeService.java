@@ -155,7 +155,7 @@ public class TradeService {
 
     public List<Map<String, Object>> pickupPoints() {
         return jdbc.query("""
-                SELECT id, point_name, address, manager_mobile, pickup_hours
+                SELECT id, point_name, address, manager_mobile, pickup_hours, longitude, latitude
                 FROM pickup_point
                 WHERE status = 'ENABLED'
                 ORDER BY id
@@ -166,6 +166,8 @@ public class TradeService {
             item.put("address", rs.getString("address"));
             item.put("mobile", rs.getString("manager_mobile"));
             item.put("hours", rs.getString("pickup_hours"));
+            item.put("longitude", rs.getBigDecimal("longitude"));
+            item.put("latitude", rs.getBigDecimal("latitude"));
             return item;
         });
     }
